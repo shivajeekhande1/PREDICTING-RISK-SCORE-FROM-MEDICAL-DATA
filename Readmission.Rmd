@@ -1,0 +1,104 @@
+---
+title: "Readmission Flag"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+library(RODBC)
+adhoc <- odbcDriverConnect(
+                "Driver=SQL Server;
+                 Server=SQLDEV\\SNORLAX,50665;
+                 Database=adhoc;
+                 Uid=;Pwd=;
+                 Trusted_Connection=yes")
+
+
+Cope_ip_1 <- sqlQuery(adhoc, paste("with abc as (
+SELECT 
+[MemberID]
+,(select sum([grosspaid])   from adhoc.[dbo].[Adventist_Intermediate] where MemberID= a.MemberID and [ClaimID]=a.[ClaimID] group by MemberID,[ClaimID]) as total_gross
+
+      ,[Principal_Diagnosis_Code]
+      ,[DRG]
+      ,[COPE_Anchor_CCS_Level1]
+      ,[COPE_Anchor_CCS_Level2]
+      ,[COPE_Anchor_CCS_Category]
+	  ,[ip_cnt]
+	  ,[COPE_Readmission_30_Day_Index]
+	  ,[Service_From_Date]
+      ,[Service_Line_From_Date]
+      ,[Service_Line_To_Date]
+      ,[Service_To_Date]
+	  ,[COPE_Readmission_30_Day_Flag]
+      ,[COPE_EM_30_Days_Post_IP_Index]
+      ,[EM_Visit_Days_Post_IP]
+      ,[COPE_EM_30_Days_Post_IP_Flag]
+      ,[COPE_EM_30_Days_Post_ED_Index]
+	
+
+ FROM [AdHoc].[dbo].[Adventist_Intermediate] a
+ where COPE_Inpatient_Flag=1
+ )
+ select * 
+from abc
+  
+ group by 
+[MemberID]
+,total_gross
+      ,[Principal_Diagnosis_Code]
+      ,[DRG]
+      ,[COPE_Anchor_CCS_Level1]
+      ,[COPE_Anchor_CCS_Level2]
+      ,[COPE_Anchor_CCS_Category]
+	  ,[ip_cnt]
+	  ,[COPE_Readmission_30_Day_Index]
+	  ,[Service_From_Date]
+      ,[Service_Line_From_Date]
+      ,[Service_Line_To_Date]
+      ,[Service_To_Date]
+	  ,[COPE_Readmission_30_Day_Flag]
+      ,[COPE_EM_30_Days_Post_IP_Index]
+      ,[EM_Visit_Days_Post_IP]
+      ,[COPE_EM_30_Days_Post_IP_Flag]
+      ,[COPE_EM_30_Days_Post_ED_Index] "))
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+library(sqldf)
+string1 <- " select *,  ROW_NUMBER() over (partition by MemberID order by MemberID) as rn,
+LAG (Service_From_Date,1) over (partition by MemberID order by MemberID, Service_From_Date Desc) as Lag_Date
+from Cope_ip_1
+where ip_cnt=1 
+order by  MemberID,Service_From_Date Desc"
+IP1 <- sqldf((" select *, LAG (Service_From_Date,1) over (partition by MemberID order by MemberID, Service_From_Date Desc) as Lag_Date
+from Cope_ip_1
+where ip_cnt=1 
+order by  MemberID,Service_From_Date Desc"),stringsAsFactors = FALSE)
+
+
+d <- sqlQuery(adhoc, paste("select * from Cope_ip_1"))
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+
+
+```

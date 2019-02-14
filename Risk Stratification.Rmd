@@ -1,0 +1,1262 @@
+---
+title: "Risk Stratification"
+output: pdf_document
+---
+
+# Connecting to Database
+```{r}
+library(RODBC)
+ETLDEV <- odbcDriverConnect()
+```
+
+```{r}
+Data_medicare <- sqlQuery(ETLDEV,paste("select distinct top (10000) 
+a.[DRG],
+a.[Netpay_Amount],
+b.[sex],
+b.[Member_ID], 
+b.[Member_Age],
+b.[Zip_Code] as Member_Zip_Code,
+b.[COPE_LOB],
+b.[PCP_NPI],
+b.[PCP_TIN],
+b.[PCP_Zip_Code],
+b.[COPE_Product_Name],
+year(b.[COPE_Coverage_Start_Date]) as Start_Year,
+b.[Chronic_Condition_Count],
+b.[Chronic_Flag_Substance_Abuse],
+b.[RiskScoreStartDT],
+b.[Chronic_Mental_Health],
+b.[Chronic_Flag_Advanced_CHF],
+b.[Chronic_Flag_CD],
+b.[Chronic_Flag_AMI],
+b.[Primary_Care_EM_Visit_Count],
+b.[Chronic_Flag_Pneumonia],
+b.[Specialty_Care_EM_Visit_Count],
+b.[Inpatient_Count],
+b.[Outpatient_Count],
+b.[Inpatient_Avoidable_Count],
+b.[ED_Count],
+b.[Professional_Count],
+b.[EM_Visit_Count],
+b.[Chronic_Flag_COPD],
+b.[Chronic_Flag_Diabetes],
+b.[Chronic_Flag_CHF],
+b.[Single_Day_Admit],
+b.[Chronic_Flag_Hypertension],
+b.[Risk_Score_HCC]
+from ETLTEST.dbo.claim a  
+INNER JOIN 
+ETLTEST.dbo.member_flags_risk b
+ON a.Member_ID = b.Member_ID
+and b.COPE_LOB= 'Medicare'
+"))
+```
+
+```{r}
+Data_medicaid <- sqlQuery(ETLDEV,paste("select distinct top (10000) 
+a.[DRG],
+a.[Netpay_Amount],
+b.[sex],
+b.[Member_ID], 
+b.[Member_Age],
+b.[Zip_Code] as Member_Zip_Code,
+b.[COPE_LOB],
+b.[PCP_NPI],
+b.[PCP_TIN],
+b.[PCP_Zip_Code],
+b.[COPE_Product_Name],
+year(b.[COPE_Coverage_Start_Date]) as Start_Year,
+b.[Chronic_Condition_Count],
+b.[Chronic_Flag_Substance_Abuse],
+b.[RiskScoreStartDT],
+b.[Chronic_Mental_Health],
+b.[Chronic_Flag_Advanced_CHF],
+b.[Chronic_Flag_CD],
+b.[Chronic_Flag_AMI],
+b.[Primary_Care_EM_Visit_Count],
+b.[Chronic_Flag_Pneumonia],
+b.[Specialty_Care_EM_Visit_Count],
+b.[Inpatient_Count],
+b.[Outpatient_Count],
+b.[Inpatient_Avoidable_Count],
+b.[ED_Count],
+b.[Professional_Count],
+b.[EM_Visit_Count],
+b.[Chronic_Flag_COPD],
+b.[Chronic_Flag_Diabetes],
+b.[Chronic_Flag_CHF],
+b.[Single_Day_Admit],
+b.[Chronic_Flag_Hypertension],
+b.[Risk_Score_ACA_Medicaid]
+from ETLTEST.dbo.claim a  
+INNER JOIN 
+ETLTEST.dbo.member_flags_risk b
+ON a.Member_ID = b.Member_ID
+and b.COPE_LOB= 'Medicaid'
+"))
+```
+
+```{r}
+Data_commercial <- sqlQuery(ETLDEV,paste("select distinct top (10000) 
+a.[DRG],
+a.[Netpay_Amount],
+b.[sex],
+b.[Member_ID], 
+b.[Member_Age],
+b.[Zip_Code] as Member_Zip_Code,
+b.[COPE_LOB],
+b.[PCP_NPI],
+b.[PCP_TIN],
+b.[PCP_Zip_Code],
+b.[COPE_Product_Name],
+year(b.[COPE_Coverage_Start_Date]) as Start_Year,
+b.[Chronic_Condition_Count],
+b.[Chronic_Flag_Substance_Abuse],
+b.[RiskScoreStartDT],
+b.[Chronic_Mental_Health],
+b.[Chronic_Flag_Advanced_CHF],
+b.[Chronic_Flag_CD],
+b.[Chronic_Flag_AMI],
+b.[Primary_Care_EM_Visit_Count],
+b.[Chronic_Flag_Pneumonia],
+b.[Specialty_Care_EM_Visit_Count],
+b.[Inpatient_Count],
+b.[Outpatient_Count],
+b.[Inpatient_Avoidable_Count],
+b.[ED_Count],
+b.[Professional_Count],
+b.[EM_Visit_Count],
+b.[Chronic_Flag_COPD],
+b.[Chronic_Flag_Diabetes],
+b.[Chronic_Flag_CHF],
+b.[Single_Day_Admit],
+b.[Chronic_Flag_Hypertension],
+b.[Risk_Score_ACA_Commercial]
+from ETLTEST.dbo.claim a  
+INNER JOIN 
+ETLTEST.dbo.member_flags_risk b
+ON a.Member_ID = b.Member_ID
+and b.COPE_LOB= 'Commercial'
+"))
+```
+
+```{r}
+Data_medicare = read.csv(file="C:/Users/princ/OneDrive/Documents/stevens/Venkata_khande_CS513_project/medicare.csv", header = TRUE, na.string = c("","?",NA))
+
+Data_medicaid = read.csv(file="C:/Users/princ/OneDrive/Documents/stevens/Venkata_khande_CS513_project/medicaid.csv", header = TRUE,na.string = c("","?",NA))
+
+Data_commercial = read.csv(file="C:/Users/princ/OneDrive/Documents/stevens/Venkata_khande_CS513_project/Commercial.csv", header = TRUE,na.string = c("","?",NA))
+
+Data_medicare<-na.omit(Data_medicare)
+
+Data_medicaid<-na.omit(Data_medicaid)
+
+Data_commercial<-na.omit(Data_commercial)
+
+
+
+```
+
+# Create Dummy Variables  
+## Transform Age
+
+
+```{r}
+Data_medicare_2 <- Data_medicare
+Data_medicaid_2 <- Data_medicaid
+Data_commercial_2 <- Data_commercial
+Data_medicare_2$Age[Data_medicare_2$Member_Age <= 18] <- 1
+Data_medicare_2$Age[Data_medicare_2$Member_Age <= 44 & Data_medicare_2$Member_Age > 18] <- 2
+Data_medicare_2$Age[Data_medicare_2$Member_Age <= 64 & Data_medicare_2$Member_Age > 44] <- 3
+Data_medicare_2$Age[Data_medicare_2$Member_Age <= 84 & Data_medicare_2$Member_Age > 64] <- 4
+Data_medicare_2$Age[Data_medicare_2$Member_Age > 84] <- 5
+
+
+Data_medicaid_2$Age[Data_medicaid_2$Member_Age <= 18] <- 1
+Data_medicaid_2$Age[Data_medicaid_2$Member_Age <= 44 & Data_medicaid_2$Member_Age > 18] <- 2
+Data_medicaid_2$Age[Data_medicaid_2$Member_Age <= 64 & Data_medicaid_2$Member_Age > 44] <- 3
+Data_medicaid_2$Age[Data_medicaid_2$Member_Age <= 84 & Data_medicaid_2$Member_Age > 64] <- 4
+Data_medicaid_2$Age[Data_medicaid_2$Member_Age > 84] <- 5
+unique(Data_medicaid_2$Age)
+
+
+Data_commercial_2$Age[Data_commercial_2$Member_Age <= 18] <- 1
+Data_commercial_2$Age[Data_commercial_2$Member_Age <= 44 & Data_commercial_2$Member_Age > 18] <- 2
+Data_commercial_2$Age[Data_commercial_2$Member_Age <= 64 & Data_commercial_2$Member_Age > 44] <- 3
+Data_commercial_2$Age[Data_commercial_2$Member_Age <= 84 & Data_commercial_2$Member_Age > 64] <- 4
+Data_commercial_2$Age[Data_commercial_2$Member_Age > 84] <- 5
+unique(Data_commercial_2$Age)
+
+
+Data_medicare_2<- Data_medicare_2[!(Data_medicare_2$Risk_Score_HCC==0),]
+Data_medicaid_2<- Data_medicaid_2[!(Data_medicaid_2$Risk_Score_HCC==0),]
+Data_commercial_2<- Data_commercial_2[!(Data_commercial_2$Risk_Score_HCC==0),]
+
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC < 0.15] <- 0
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 0.15 & Data_medicare_2$Risk_Score_HCC < 1.2] <- 0.15
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 0.6 & Data_medicare_2$Risk_Score_HCC < 1.2] <- 0.6
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 1.2 & Data_medicare_2$Risk_Score_HCC < 2.4] <- 1.2
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 1.8 & Data_medicare_2$Risk_Score_HCC < 2.4] <- 1.8
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 2.4 & Data_medicare_2$Risk_Score_HCC < 3.6] <- 2.4
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 3.0 & Data_medicare_2$Risk_Score_HCC < 3.6] <- 3.0
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 3.6 & Data_medicare_2$Risk_Score_HCC < 4.8] <- 3.6
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 4.2 & Data_medicare_2$Risk_Score_HCC < 4.8] <- 4.2
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 4.8 & Data_medicare_2$Risk_Score_HCC < 6.0] <- 4.8
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 5.4 & Data_medicare_2$Risk_Score_HCC < 6.0] <- 5.4
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 6.0 & Data_medicare_2$Risk_Score_HCC < 7.2] <- 6.0
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 6.6 & Data_medicare_2$Risk_Score_HCC < 7.2] <- 6.6
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 7.2 & Data_medicare_2$Risk_Score_HCC < 8.4] <- 7.2
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 7.8 & Data_medicare_2$Risk_Score_HCC < 8.4] <- 7.8
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 8.4 & Data_medicare_2$Risk_Score_HCC < 10.0] <- 8.4
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 9.0 & Data_medicare_2$Risk_Score_HCC < 10.0] <- 9.0
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 10.0 & Data_medicare_2$Risk_Score_HCC < 12.0] <- 10.0
+ Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 11.0 & Data_medicare_2$Risk_Score_HCC < 12.0] <- 11.0
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 12.0 & Data_medicare_2$Risk_Score_HCC < 13.0] <- 12.0
+Data_medicare_2$Risk_Score_HCC[Data_medicare_2$Risk_Score_HCC >= 13.0 ] <- 13.0
+
+
+
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC < 0.15] <- 0
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 0.15 & Data_medicaid_2$Risk_Score_HCC < 1.2] <- 0.15
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 0.6 & Data_medicaid_2$Risk_Score_HCC < 1.2] <- 0.6
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 1.2 & Data_medicaid_2$Risk_Score_HCC < 2.4] <- 1.2
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 1.8 & Data_medicaid_2$Risk_Score_HCC < 2.4] <- 1.8
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 2.4 & Data_medicaid_2$Risk_Score_HCC < 3.6] <- 2.4
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 3.0 & Data_medicaid_2$Risk_Score_HCC < 3.6] <- 3.0
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 3.6 & Data_medicaid_2$Risk_Score_HCC < 4.8] <- 3.6
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 4.2 & Data_medicaid_2$Risk_Score_HCC < 4.8] <- 4.2
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 4.8 & Data_medicaid_2$Risk_Score_HCC < 6.0] <- 4.8
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 5.4 & Data_medicaid_2$Risk_Score_HCC < 6.0] <- 5.4
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 6.0 & Data_medicaid_2$Risk_Score_HCC < 7.2] <- 6.0
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 6.6 & Data_medicaid_2$Risk_Score_HCC < 7.2] <- 6.6
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 7.2 & Data_medicaid_2$Risk_Score_HCC < 8.4] <- 7.2
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 7.8 & Data_medicaid_2$Risk_Score_HCC < 8.4] <- 7.8
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 8.4 & Data_medicaid_2$Risk_Score_HCC < 10.0] <- 8.4
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 9.0 & Data_medicaid_2$Risk_Score_HCC < 10.0] <- 9.0
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 10.0 & Data_medicaid_2$Risk_Score_HCC < 12.0] <- 10.0
+ Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 11.0 & Data_medicaid_2$Risk_Score_HCC < 12.0] <- 11.0
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 12.0 & Data_medicaid_2$Risk_Score_HCC < 13.0] <- 12.0
+Data_medicaid_2$Risk_Score_HCC[Data_medicaid_2$Risk_Score_HCC >= 13.0 ] <- 13.0
+
+
+
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC < 0.15] <- 0
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 0.15 & Data_commercial_2$Risk_Score_HCC < 1.2] <- 0.15
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 0.6 & Data_commercial_2$Risk_Score_HCC < 1.2] <- 0.6
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 1.2 & Data_commercial_2$Risk_Score_HCC < 2.4] <- 1.2
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 1.8 & Data_commercial_2$Risk_Score_HCC < 2.4] <- 1.8
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 2.4 & Data_commercial_2$Risk_Score_HCC < 3.6] <- 2.4
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 3.0 & Data_commercial_2$Risk_Score_HCC < 3.6] <- 3.0
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 3.6 & Data_commercial_2$Risk_Score_HCC < 4.8] <- 3.6
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 4.2 & Data_commercial_2$Risk_Score_HCC < 4.8] <- 4.2
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 4.8 & Data_commercial_2$Risk_Score_HCC < 6.0] <- 4.8
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 5.4 & Data_commercial_2$Risk_Score_HCC < 6.0] <- 5.4
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 6.0 & Data_commercial_2$Risk_Score_HCC < 7.2] <- 6.0
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 6.6 & Data_commercial_2$Risk_Score_HCC < 7.2] <- 6.6
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 7.2 & Data_commercial_2$Risk_Score_HCC < 8.4] <- 7.2
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 7.8 & Data_commercial_2$Risk_Score_HCC < 8.4] <- 7.8
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 8.4 & Data_commercial_2$Risk_Score_HCC < 10.0] <- 8.4
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 9.0 & Data_commercial_2$Risk_Score_HCC < 10.0] <- 9.0
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 10.0 & Data_commercial_2$Risk_Score_HCC < 12.0] <- 10.0
+ Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 11.0 & Data_commercial_2$Risk_Score_HCC < 12.0] <- 11.0
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 12.0 & Data_commercial_2$Risk_Score_HCC < 13.0] <- 12.0
+Data_commercial_2$Risk_Score_HCC[Data_commercial_2$Risk_Score_HCC >= 13.0 ] <- 13.0
+
+
+unique(Data_medicare_2$Age)
+
+
+
+
+```
+
+## Mapping ZipCode to County  
+```{r}
+lookup_Zipcode <- read.csv("Zip_codes.csv", header = TRUE)
+Data_medicare_2$Member_County <- with(lookup_Zipcode,
+                                   County[match(Data_medicare_2$Member_Zip_Code,Zip_Code)])
+Data_medicare_2$PCP_County <- with(lookup_Zipcode,
+                                   County[match(Data_medicare_2$PCP_Zip_Code,Zip_Code)])
+
+Data_medicaid_2$Member_County <- with(lookup_Zipcode,
+                                   County[match(Data_medicaid_2$Member_Zip_Code,Zip_Code)])
+Data_medicaid_2$PCP_County <- with(lookup_Zipcode,
+                                   County[match(Data_medicaid_2$PCP_Zip_Code,Zip_Code)])
+
+Data_commercial_2$Member_County <- with(lookup_Zipcode,
+                                   County[match(Data_commercial_2$Member_Zip_Code,Zip_Code)])
+Data_commercial_2$PCP_County <- with(lookup_Zipcode,
+                                   County[match(Data_commercial_2$PCP_Zip_Code,Zip_Code)])
+
+
+```
+
+## Mapping DRG to MDC
+```{r}
+lookup_DRG_MDC <- read.csv("DRG-MDC.csv", header = TRUE)
+Data_medicaid_2$MDC <- with(lookup_DRG_MDC,
+                                   MDC[match(Data_medicaid_2$COPE_DRG,DRG)])
+Data_medicare_2$MDC <- with(lookup_DRG_MDC,
+                                   MDC[match(Data_medicare_2$COPE_DRG,DRG)])
+#Data_commercial_2$MDC <- with(lookup_DRG_MDC,
+                                   #MDC[match(Data_commercial_2$P,DRG)])
+```
+
+
+
+
+```{r}
+#install.packages("fastDummies")
+library(fastDummies)
+Data_medicare_3 <- dummy_cols(Data_medicare_2, 
+                           select_columns = c("sex",
+                                              "MDC",
+                                              "Age",
+                                              "Start_Year",
+                                              "PCP_County",
+                                              "COPE_Product_Name",
+                                              "Member_County"
+                                              ),
+                           remove_first_dummy = TRUE)
+colnames(Data_medicare_3)
+
+Data_medicaid_3 <- dummy_cols(Data_medicaid_2, 
+                           select_columns = c("sex",
+                                              "MDC",
+                                              "Age",
+                                              "Start_Year",
+                                              "PCP_County",
+                                              "COPE_Product_Name",
+                                              "Member_County"
+                                              ),
+                           remove_first_dummy = TRUE)
+colnames(Data_medicaid_3)
+
+Data_commercial_3 <- dummy_cols(Data_commercial_2, 
+                           select_columns = c("sex",
+                                              "MDC",
+                                              "Age",
+                                              "Start_Year",
+                                              "PCP_County",
+                                              "COPE_Product_Name",
+                                              "Member_County"
+                                              ),
+                           remove_first_dummy = TRUE)
+colnames(Data_commercial_3)
+```
+
+# Remove Useless Columns
+```{r}
+Data_medicare_4   <- within(Data_medicare_3, rm(COPE_DRG,
+                                                Member_ID,
+                                                Member_Age,
+                                                Member_County,
+                                                Age,
+                                                Claim_ID,
+                                                Member_Zip_Code,             
+                                                COPE_LOB,                      
+                                                PCP_NPI,        
+                                                sex,
+                                                
+                                                PCP_TIN,
+                                                PCP_Zip_Code,   
+                                                PCP_County,
+                                                MDC,
+                                                COPE_Product_Name,
+                                                Start_Year,                   
+                                                RiskScoreStartDT
+                                                ))
+
+```
+
+```{r}
+Data_medicaid_4   <- within(Data_medicaid_3, rm(COPE_DRG,
+                                                Member_ID,
+                                                Member_Age,
+                                                Member_County,
+                                                Age,
+                                                Claim_ID,
+                                                Member_Zip_Code,             
+                                                COPE_LOB,                      
+                                                PCP_NPI,
+                                                sex,
+                                                
+                                                PCP_TIN,
+                                                PCP_Zip_Code,   
+                                                PCP_County,
+                                                MDC,
+                                                COPE_Product_Name,
+                                                Start_Year,                   
+                                                RiskScoreStartDT
+                                                ))
+
+```
+
+```{r}
+Data_commercial_4   <- within(Data_commercial_3, rm(
+                                                Member_ID,
+                                                Member_Age,
+                                                Member_County,
+                                                Age,
+                                                Member_Zip_Code,             
+                                                COPE_LOB,                      
+                                                PCP_NPI,  
+                                                Claim_ID,
+                                                sex,
+                                              
+                                                PCP_TIN,
+                                                PCP_Zip_Code,   
+                                                PCP_County,
+                                                MDC,
+                                                Principal_Diagnosis_Code,
+                                                COPE_Product_Name,
+                                                Start_Year,                   
+                                                RiskScoreStartDT
+                                                ))
+
+```
+
+
+```{r}
+colnames(Data_medicaid_4)[which(names(Data_medicaid_4) == "PCP_County_New York")]<-"PCP_County_New_York"
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "COPE_Product_Name_Child_Health_Plus_(CHP)")]<-"COPE_Product_Name_Child_Health_Plus_CHP"
+
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "COPE_Product_Name_Health and Recovery Plan (HARP)")]<-"COPE_Product_Name_Health_and_Recovery_Plan_HARP"
+
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "Member_County_New York")]<-"Member_County_New_York"
+
+colnames(Data_medicaid_4)[which(names(Data_medicaid_4) == "COPE_Product_Name_Health and Recovery Plan (HARP)")]<-"COPE_Product_Name_Health_and_Recovery_Plan_HARP"
+
+colnames(Data_medicaid_4)[which(names(Data_medicaid_4) == "Member_County_New York")]<-"Member_County_New_York"
+
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "PCP_County_New York")]<-"PCP_County_New_York"
+
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "COPE_Product_Name_Fully Integrated Duals Advantage (FIDA)")]<-"COPE_Product_Name_Fully_Integrated_Duals_Advantage_(FIDA)"
+
+
+colnames(Data_medicare_4)[which(names(Data_medicare_4) == "COPE_Product_Name_Fully_Integrated_Duals_Advantage_(FIDA)")]<-"COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida"
+
+
+colnames(Data_commercial_4)[which(names(Data_commercial_4) == "Member_County_New York")]<-"Member_County_New_York"
+
+```
+# Feature Selection Model
+## Random Forest Method
+
+```{r}
+#install.packages("party")
+
+
+library(party)
+RandomForest_medicaid <- cforest(Risk_Score_HCC ~ . , data= Data_medicaid_4, control=cforest_unbiased(mtry=2,ntree=50))
+ # fit the random forest
+varimp(RandomForest_medicaid ) # get variable importance, based on mean decrease in accuracy
+#varimp(RandomForest, conditional=TRUE)
+#plot(randomForest, type="simple")
+
+```
+
+```{r}
+
+library(party)
+RandomForest_medicare <- cforest(Risk_Score_HCC ~ . , data= Data_medicare_4, control=cforest_unbiased(mtry=2,ntree=50))
+#RandomForest <- randomForest(Risk_Score_HCC ~ . , data= Data_medicare_4) # fit the random forest
+varimp(RandomForest_medicare ) # get variable importance, based on mean decrease in accuracy
+# varimp(RandomForest, conditional=TRUE)
+```
+
+```{r}
+
+#RandomForest <- randomForest(Risk_Score_HCC ~ . , data= Data_commercial_4) # fit the random forest
+library(party)
+RandomForest_commercial <- cforest(Risk_Score_HCC ~ . , data= Data_commercial_4, control=cforest_unbiased(mtry=2,ntree=50))
+varimp(RandomForest_commercial) # get variable importance, based on mean decrease in accuracy
+# varimp(RandomForest, conditional=TRUE)
+
+```
+
+  Relative Importance 
+```{r} 
+ library(relaimpo) 
+ lmMod <- lm(Netpay_Amount ~ . , data = Data_medicare_4) 
+ relImportance <- calc.relimp(lmMod, type = "lmg", rela = TRUE)   
+  
+ sort(relImportance$lmg, decreasing=TRUE)  
+ ``` 
+
+ ```{r} 
+ library(relaimpo) 
+ lmMod <- lm(Netpay_Amount ~ . , data = Data_medicaid_4) 
+ relImportance <- calc.relimp(lmMod, type = "lmg", rela = TRUE)   
+  
+ sort(relImportance$lmg, decreasing=TRUE)   
+ ``` 
+
+ ```{r} 
+ library(relaimpo) 
+ lmMod <- lm(Netpay_Amount ~ . , data = Data_commercial_4)  
+ relImportance <- calc.relimp(lmMod, type = "lmg", rela = TRUE)   
+  
+ sort(relImportance$lmg, decreasing=TRUE)   
+``` 
+
+
+  Boruta (takes a very long time) 
+```{r} 
+ library(Boruta) 
+  #Decide if a variable is important or not using Boruta 
+ boruta_output <- Boruta(Netpay_Amount ~ ., data=na.omit(Data_medicare_4), doTrace=2) 
+ boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])   
+  #collect Confirmed and Tentative variables 
+ print(boruta_signif) 
+ plot(boruta_output, cex.axis=.7, las=2, xlab="", main="Variable Importance") 
+``` 
+
+```{r} 
+ library(Boruta) 
+  #Decide if a variable is important or not using Boruta 
+ boruta_output <- Boruta(Netpay_Amount ~ ., data=na.omit(Data_medicaid_4), doTrace=2) 
+ boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])   
+  #collect Confirmed and Tentative variables 
+ print(boruta_signif) 
+ plot(boruta_output, cex.axis=.7, las=2, xlab="", main="Variable Importance") 
+``` 
+
+```{r} 
+ ?Boruta 
+ library(Boruta) 
+  #Decide if a variable is important or not using Boruta 
+ boruta_output <- Boruta(Netpay_Amount ~ ., data=na.omit(Data_commercial_4), doTrace=2) 
+ boruta_signif <- names(boruta_output$finalDecision[boruta_output$finalDecision %in% c("Confirmed", "Tentative")])   
+  #collect Confirmed and Tentative variables 
+ print(boruta_signif) 
+ plot(boruta_output, cex.axis=.7, las=2, xlab="", main="Variable Importance") 
+```
+
+cor(Data_medicare_4)
+
+
+#Dividing the data as train and test
+```{r}
+#Store every fifth record in a "test" dataset starting with the first record
+test <- seq(1,nrow((Data_commercial_4)), by = 5)
+commericial_test <- Data_commercial_4[test,]
+#Store the rest in the "training" dataset
+commercial_train <- Data_commercial_4[-test,]
+
+test <- seq(1,nrow((Data_medicaid_4)), by = 5)
+medicaid_test <- Data_medicaid_4[test,]
+#Store the rest in the "training" dataset
+medicaid_train <- Data_medicaid_4[-test,]
+
+test <- seq(1,nrow((Data_medicare_4)), by = 5)
+medicare_test <- Data_medicare_4[test,]
+#Store the rest in the "training" dataset
+medicare_train <- Data_medicare_4[-test,]
+
+
+```
+
+
+
+#decision tree for medicare
+```{r}
+library('rpart')
+decision_tree_medicare <- rpart( as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ PCP_County_Bronx+ 
+ Member_County_Westchester+                               
+Member_County_New_York+                                 
+Member_County_Kings+                                      
+Member_County_Queens+                                     
+Member_County_Nassau+                                     
+Member_County_Richmond+                                   
+Member_County_Bergen+                                     
+Member_County_Morris+                                    
+Member_County_Dutchess+                                   
+Member_County_Monroe+                                  
+Member_County_Albany+ 
+COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida ,data=medicare_train)
+
+library(rpart.plot)
+
+rpart.plot(decision_tree_medicare,box.palette = "RdBu", shadow.col = "gray", nn = TRUE)
+
+decision_prediction_medicare<-predict( decision_tree_medicare ,medicare_test , type="class" )
+
+#calculating rate
+table(actual=medicare_test [,22],decision_prediction_medicare)
+wrong<- (medicare_test[,22]!=decision_prediction_medicare)
+errorrate_medicare<-sum(wrong)/length(wrong)
+
+
+
+
+
+
+```
+
+#decision tree medicaid
+```{r}
+library('rpart')
+decision_tree_medicaid <- rpart( as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ Member_County_Queens + 
+ Member_County_Kings + 
+ Member_County_New_York+ 
+ Member_County_Suffolk  + 
+ Member_County_Nassau    + 
+ Member_County_Westchester+ 
+ Member_County_Richmond   + 
+ Member_County_Orange      + 
+ Member_County_Middlesex     + 
+ Member_County_Schenectady    + 
+ Member_County_Ulster  + 
+ COPE_Product_Name_Health_and_Recovery_Plan_HARP ,data=medicaid_train)
+
+library(rpart.plot)
+
+rpart.plot(decision_tree_medicaid,box.palette = "RdBu", shadow.col = "gray", nn = TRUE)
+
+decision_prediction_medicaid<-predict( decision_tree_medicaid ,medicaid_test , type="class" )
+
+#calculating rate
+table(actual=medicaid_test [,22],decision_prediction_medicaid)
+wrong<- (medicaid_test[,22]!=decision_prediction_medicaid)
+decisiontree_errorrate_medicaid<-sum(wrong)/length(wrong)
+
+
+
+```
+
+#decision tree for commercial
+```{r}
+library('rpart')
+decision_tree_commercial <- rpart(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_+
+Member_County_New_York+        
+Member_County_Queens  +       
+Member_County_Westchester+     
+  Member_County_Nassau+         
+Member_County_Orange+          
+  Member_County_Bergen +        
+Member_County_Rockland+        
+  Member_County_Kings   +       
+Member_County_Essex+           
+  Member_County_Dutchess +       
+  Member_County_Delaware+
+ COPE_Product_Name_ ,data=commercial_train )
+
+library(rpart.plot)
+
+rpart.plot(decision_tree_commercial,box.palette = "RdBu", shadow.col = "gray", nn = TRUE)
+
+decision_prediction_commercial<-predict( decision_tree_commercial ,commericial_test , type="class" )
+
+#calculating rate
+table(actual=commericial_test [,22],decision_prediction_commercial)
+wrong<- (commericial_test[,22]!=decision_prediction_commercial)
+decisiontree_errorrate_commercial<-sum(wrong)/length(wrong)
+
+
+
+```
+
+#svm for medicaid
+```{r}
+library(e1071)
+
+svm_model_medicaid <- svm(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ Member_County_Queens + 
+ Member_County_Kings + 
+ Member_County_New_York+ 
+ Member_County_Suffolk  + 
+ Member_County_Nassau    + 
+ Member_County_Westchester+ 
+ Member_County_Richmond   + 
+ Member_County_Orange      + 
+ Member_County_Middlesex     + 
+ Member_County_Schenectady    + 
+ Member_County_Ulster  + 
+ COPE_Product_Name_Health_and_Recovery_Plan_HARP ,data=medicaid_train)
+summary
+
+plot(svm_model_medicaid,medicaid_test)
+
+pred_medicaid <- predict(svm_model_medicaid,medicaid_test)
+
+table(prediction=pred_medicaid,actual=medicaid_test$Risk_Score_HCC)
+svm_wrong <- (medicaid_test$Risk_Score_HCC!=pred_medicaid)
+svm_error_rate_medicaid <- sum(svm_wrong)/length(svm_wrong)
+svm_error_rate_medicaid
+
+
+```
+
+#svm for medicare
+```{r}
+library(e1071)
+
+svm_model_medicare <- svm(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ PCP_County_Bronx+ 
+ Member_County_Westchester+                               
+Member_County_New_York+                                 
+Member_County_Kings+                                      
+Member_County_Queens+                                     
+Member_County_Nassau+                                     
+Member_County_Richmond+                                   
+Member_County_Bergen+                                     
+Member_County_Morris+                                    
+Member_County_Dutchess+                                   
+Member_County_Monroe+                                  
+Member_County_Albany+ 
+COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida ,data=medicare_train)
+summary(svm_model_medicare)
+pred_medicare <- predict(svm_model_medicare,medicare_test)
+
+table(prediction=pred_medicare,actual=medicare_test$Risk_Score_HCC)
+svm_wrong <- (medicare_test$Risk_Score_HCC!=pred_medicare)
+svm_error_rate_medicare <- sum(svm_wrong)/length(svm_wrong)
+svm_error_rate_medicare
+```
+
+#svm for commercial
+colnames(commercial_train)
+
+```{r}
+library(e1071)
+
+svm_model_commercial <- svm(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_+
+Member_County_New_York+        
+Member_County_Queens  +       
+Member_County_Westchester+     
+  Member_County_Nassau+         
+Member_County_Orange+          
+  Member_County_Bergen +        
+Member_County_Rockland+        
+  Member_County_Kings   +       
+Member_County_Essex+           
+  Member_County_Dutchess +       
+  Member_County_Delaware+
+ COPE_Product_Name_ ,data=commercial_train)
+summary(svm_model_commercial)
+pred_commercial <- predict(svm_model_commercial,commericial_test)
+
+table(prediction=pred_commercial,actual=commericial_test$Risk_Score_HCC)
+svm_wrong <- (commericial_test$Risk_Score_HCC!=pred_commercial)
+svm_error_rate_commercial <- sum(svm_wrong)/length(svm_wrong)
+svm_error_rate_commercial
+```
+
+#naive bayes for medicaid
+```{r}
+library(e1071)
+
+nBayes_all_medicaid <- naiveBayes(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ Member_County_Queens + 
+ Member_County_Kings + 
+ Member_County_New_York+ 
+ Member_County_Suffolk  + 
+ Member_County_Nassau    + 
+ Member_County_Westchester+ 
+ Member_County_Richmond   + 
+ Member_County_Orange      + 
+ Member_County_Middlesex     + 
+ Member_County_Schenectady    + 
+ Member_County_Ulster  + 
+ COPE_Product_Name_Health_and_Recovery_Plan_HARP ,data=medicaid_train)
+category_all_medicaid <- predict(nBayes_all_medicaid, medicaid_test)
+
+table(nBayes_all_medicaid=category_all_medicaid,actual=medicaid_test$Risk_Score_HCC)
+NB_wrong<-sum(category_all_medicaid!=medicaid_test$Risk_Score_HC)
+NB_error_rate_medicaid<-NB_wrong/length(category_all_medicaid)
+NB_error_rate_medicaid
+```
+
+#naive bayes for medicare
+```{r}
+nBayes_all_medicare <- naiveBayes(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ PCP_County_Bronx+ 
+ Member_County_Westchester+                               
+Member_County_New_York+                                 
+Member_County_Kings+                                      
+Member_County_Queens+                                     
+Member_County_Nassau+                                     
+Member_County_Richmond+                                   
+Member_County_Bergen+                                     
+Member_County_Morris+                                    
+Member_County_Dutchess+                                   
+Member_County_Monroe+                                  
+Member_County_Albany+ 
+COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida ,data=medicare_train )
+category_all_medicare <- predict(nBayes_all_medicare, medicare_test)
+
+table(nBayes_all_medicare=category_all_medicare,actual=medicare_test$Risk_Score_HCC)
+NB_wrong<-sum(category_all_medicare!=medicare_test$Risk_Score_HC)
+NB_error_rate_medicare<-NB_wrong/length(category_all_medicare)
+NB_error_rate_medicare
+
+```
+
+#naive bayes for commercial
+```{r}
+nBayes_all_commercial <- naiveBayes(as.factor(Risk_Score_HCC) ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_+
+Member_County_New_York+        
+Member_County_Queens  +       
+Member_County_Westchester+     
+  Member_County_Nassau+         
+Member_County_Orange+          
+  Member_County_Bergen +        
+Member_County_Rockland+        
+  Member_County_Kings   +       
+Member_County_Essex+           
+  Member_County_Dutchess +       
+  Member_County_Delaware+
+ COPE_Product_Name_ ,data=commercial_train)
+category_all_commercial <- predict(nBayes_all_commercial, commericial_test)
+
+table(nBayes_all_commercial=category_all_commercial,actual=commericial_test$Risk_Score_HCC)
+NB_wrong<-sum(category_all_commercial!=commericial_test$Risk_Score_HC)
+NB_error_rate_commercial<-NB_wrong/length(category_all_commercial)
+NB_error_rate_commercial
+
+```
+
+```{r}
+library(class)
+
+#knn for medicaid
+predict_knn_medicaid <- knn(medicaid_train[,-22],medicaid_test[,-22],medicaid_train[,22],k=5)
+
+table(predict_knn_medicaid,medicaid_test[,22])
+KNN_error_rate_medicaid<-(round(mean(medicaid_test[,22]!=predict_knn_medicaid)*100,2)) 
+Verify<-c(predict_knn_medicaid)==medicaid_test[,22]
+error_rate<-(1-sum(Verify)/length(Verify))*100
+cat(error_rate,"%")
+install.packages("gmodels")
+library(gmodels)
+CrossTable(x = medicaid_test[,22],y = predict_knn_medicaid, prop.chisq = FALSE)
+
+#knn for medicare
+predict_knn_commercial <- knn(commercial_train[,-22],commericial_test[,-22],commercial_train[,22],k=5)
+
+table(predict_knn_commercial,commericial_test[,22])
+KNN_error_rate_commercial<-(round(mean(commericial_test[,22]!=predict_knn_commercial)*100,2)) -- error #level set are different because no. of rows and no. of column in table are different.
+Verify<-c(predict_knn_commercial)==commercial_test[,22]
+error_rate<-(1-sum(Verify)/length(Verify))*100
+cat(error_rate,"%")
+library(ggplot2)
+library(plyr)
+#install.packages("ggplot2")
+#CrossTable(x = medicare_test[,22],y = predict_knn_medicare, prop.chisq = FALSE)
+plot.df = data.frame(commericial_test, predicted = predict_knn_commercial)
+plot.df
+
+#knn for commercial
+predict_knn_medicare <- knn(medicare_train[,-22],medicare_test[,-22],medicare_train[,22],k=5)
+
+table(predict_knn_medicare,medicare_test[,22])
+KNN_error_rate_medicare<-(round(mean(medicare_test[,22]!=predict_knn_medicare)*100,2)) -- error #level set are different because no. of rows and no. of column in table are different.
+Verify<-c(predict_knn_medicare)==medicare_test[,22]
+error_rate<-(1-sum(Verify)/length(Verify))*100
+cat(error_rate,"%")
+
+
+
+
+
+```
+
+#neuralnet for medicaid
+```{r}
+library("neuralnet")
+net_data_medicaid  <- neuralnet(Risk_Score_HCC ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ Member_County_Queens + 
+ Member_County_Kings + 
+ Member_County_New_York+ 
+ Member_County_Suffolk  + 
+ Member_County_Nassau    + 
+ Member_County_Westchester+ 
+ Member_County_Richmond   + 
+ Member_County_Orange      +  
+ Member_County_Middlesex     + 
+ Member_County_Schenectady    + 
+ Member_County_Ulster  + 
+ COPE_Product_Name_Health_and_Recovery_Plan_HARP 
+                       ,medicaid_train, hidden=5,stepmax=1e6, threshold=0.01)
+
+plot(net_data_medicaid)
+```
+
+#neural net for medicare
+colnames(medicare_test)
+```{r}
+
+library("neuralnet")
+net_data_medicare  <- neuralnet(Risk_Score_HCC ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_New_York+ 
+ PCP_County_Westchester+ 
+ PCP_County_Bronx+ 
+ Member_County_Westchester+                               
+Member_County_New_York+                                 
+Member_County_Kings+                                      
+Member_County_Queens+                                     
+Member_County_Nassau+                                     
+Member_County_Richmond+                                   
+Member_County_Bergen+                                     
+Member_County_Morris+                                     
+Member_County_Hudson+                                     
+Member_County_Dutchess+                                   
+Member_County_Monroe+                                     
+Member_County_Middlesex+                                  
+Member_County_Albany+ 
+COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida
+                       ,medicare_train, hidden=5,stepmax=1e6, threshold=0.01)
+# ?neuralnet()
+plot(net_data_medicare)
+
+net_data_results_medicare <-compute(net_data_medicare, medicare_test[,c("Chronic_Flag_Advanced_CHF", 
+ "Professional_Count", 
+ "Chronic_Flag_Hypertension",  
+ "Chronic_Condition_Count", 
+ "Chronic_Flag_CHF", 
+ "Chronic_Flag_AMI", 
+ "Outpatient_Count",
+ "Inpatient_Count",
+ "Chronic_Flag_Diabetes",
+ "Chronic_Flag_Pneumonia",
+ "Single_Day_Admit", 
+ "Chronic_Flag_CD", 
+ "ED_Count",
+ "Primary_Care_EM_Visit_Count",  
+ "Chronic_Mental_Health", 
+ "Netpay_Amount", 
+ "Inpatient_Avoidable_Count",  
+ "EM_Visit_Count",
+ "Specialty_Care_EM_Visit_Count", 
+"Chronic_Flag_Substance_Abuse", 
+ "Chronic_Flag_COPD",
+ "PCP_County_New_York", 
+ "PCP_County_Westchester", 
+ "PCP_County_Bronx", 
+ "Member_County_Westchester",                               
+"Member_County_New_York",                                 
+"Member_County_Kings",                                     
+"Member_County_Queens",                                     
+"Member_County_Nassau",                                     
+"Member_County_Richmond",                                   
+"Member_County_Bergen",                                     
+"Member_County_Morris",                                     
+"Member_County_Hudson",                                     
+"Member_County_Dutchess",                                  
+"Member_County_Monroe",                                    
+"Member_County_Middlesex",                                  
+"Member_County_Albany",
+"COPE_Product_Name_Fully_Integrated_Duals_Advantage_fida")])
+ANN_medicare=as.numeric(net_data_results_medicare$net.result)
+
+
+
+
+
+table(Actual=medicare_test$Risk_Score_HCC,predicted = ANN_medicare)
+
+wrong<- (medicare_test$Risk_Score_HCC!=ANN_medicare)
+rate<-sum(wrong)/length(wrong)
+rate
+
+```
+
+#neural net for commercial
+```{r}
+
+library("neuralnet")
+net_data_commericial  <- neuralnet(Risk_Score_HCC ~  
+ Chronic_Flag_Advanced_CHF + 
+ Professional_Count+  
+ Chronic_Flag_Hypertension+  
+ Chronic_Condition_Count+ 
+ Chronic_Flag_CHF+  
+ Chronic_Flag_AMI+  
+ Outpatient_Count + 
+ Inpatient_Count+ 
+ Chronic_Flag_Diabetes+  
+ Chronic_Flag_Pneumonia+ 
+ Single_Day_Admit + 
+ Chronic_Flag_CD + 
+ ED_Count + 
+ Primary_Care_EM_Visit_Count+  
+ Chronic_Mental_Health+ 
+ Netpay_Amount + 
+ Inpatient_Avoidable_Count+  
+ EM_Visit_Count + 
+ Specialty_Care_EM_Visit_Count+  
+  Chronic_Flag_Substance_Abuse + 
+ Chronic_Flag_COPD  + 
+ PCP_County_+
+Member_County_New_York+        
+Member_County_Queens  +       
+Member_County_Westchester+     
+  Member_County_Nassau+         
+Member_County_Orange+          
+  Member_County_Bergen +        
+Member_County_Rockland+        
+  Member_County_Kings   +       
+Member_County_Essex+           
+  Member_County_Dutchess +           
+  Member_County_Monmouth  +     
+Member_County_Richmond+        
+  Member_County_Delaware+
+ COPE_Product_Name_  
+                       ,commercial_train, hidden=5,stepmax=1e6, threshold=0.01)
+
+plot(net_data_commericial )
+```
+
+

@@ -1,0 +1,203 @@
+---
+title: "Unused Codes"
+output: pdf_document
+---
+
+```{r}
+library(RODBC)
+ETLDEV <- odbcDriverConnect(
+                "Driver=SQL Server;
+                 Server=SQLDEV\\SNORLAX,50665;
+                 Database=ETL_DEV;
+                 Uid=;Pwd=;
+                 Trusted_Connection=yes")
+Data_small <- sqlQuery(ETLDEV,paste("SELECT distinct TOP(10000)  a.Member_ID,
+     a.Netpay_Amount, 
+	   a.Diagnosis_Code_2,
+	   a.Diagnosis_Code_3,
+	   a.Diagnosis_Code_4,   
+	   a.Diagnosis_Code_5,
+	   a.Diagnosis_Code_6,
+	   a.Diagnosis_Code_7,
+	   a.Diagnosis_Code_8,
+	   a.Diagnosis_Code_9,
+	   a.Diagnosis_Code_10,
+	   a.Diagnosis_Code_11,
+	   a.Diagnosis_Code_12,
+	   a.Diagnosis_Code_13,
+		 a.Diagnosis_Code_14,
+		 a.Diagnosis_Code_15,
+		 a.Diagnosis_Code_16,
+		 a.Diagnosis_Code_17,
+		 a.Diagnosis_Code_18,
+		 a.HCPCS,
+		 a.ICD_Procedure_Code_1,
+		 a.ICD_Procedure_Code_2,
+		 a.ICD_Procedure_Code_3,
+		 a.ICD_Procedure_Code_4,
+		 a.ICD_Procedure_Code_5,
+		 a.ICD_Procedure_Code_6,
+		 a.ICD_Procedure_Code_7,
+b.[County_Name],     
+b.[Member_Age],
+b.[sex],
+b.[LOB],
+b.[PCP_NPI],
+b.[PCP_TIN],
+b.[PCP_Zip_Code],
+b.Zip_Code as Member_Zip_Code,
+b.[COPE_Product_Name],
+b.[COPE_Coverage_Start_Date],
+b.[Chronic_Condition_Count],
+b.[Chronic_Flag_Substance_Abuse],
+b.[RiskScoreStartDT],
+b.[Chronic_Mental_Health],
+b.[Chronic_Flag_Advanced_CHF],
+b.[Chronic_Flag_CD],
+b.[Chronic_Flag_AMI],
+b.[Primary_Care_EM_Visit_Count],
+b.[Chronic_Flag_Pneumonia],
+b.[Specialty_Care_EM_Visit_Count],
+b.[Inpatient_Count],
+b.[Outpatient_Count],
+b.[Inpatient_Avoidable_Count],
+b.[ED_Count],
+b.[Professional_Count],
+b.[EM_Visit_Count],
+b.[Chronic_Flag_COPD],
+b.[Chronic_Flag_Diabetes],
+b.[Chronic_Flag_CHF],
+b.[Single_Day_Admit],
+b.[Chronic_Flag_Hypertension],
+b.[Risk_Score_HCC],
+b.[Risk_Score_ACA_Commercial],
+b.[Risk_Score_ACA_Medicaid]
+FROM [ETLTEST].[dbo].[Claim] a
+INNER JOIN 
+[ETL_dev].[dbo].[member_flags_risk] b
+ON a.Member_ID = b.Member_ID
+"))
+Data_small_2 <- Data_small
+```
+
+# Mapping ICD_Procedure_Code1 through ICD_Procedure_Code7 to CCS which has fewer levels
+```{r}
+lookup_ICD9PCS <- read.csv("ICD9PCS-CCS.csv", header = TRUE)
+Data_small_2$Proc_1_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_1,ICD9)])
+unique(Data_small_2$Proc_1_CCS)
+Data_small_2$Proc_2_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_2,ICD9)])
+unique(Data_small_2$Proc_2_CCS)
+Data_small_2$Proc_3_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_3,ICD9)])
+unique(Data_small_2$Proc_3_CCS)
+Data_small_2$Proc_4_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_4,ICD9)])
+unique(Data_small_2$Proc_4_CCS)
+Data_small_2$Proc_5_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_5,ICD9)])
+unique(Data_small_2$Proc_5_CCS)
+Data_small_2$Proc_6_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_6,ICD9)])
+unique(Data_small_2$Proc_6_CCS)
+Data_small_2$Proc_7_CCS <- with(lookup_ICD9PCS, CCS[match(Data_small_2$ICD_Procedure_Code_7,ICD9)])
+unique(Data_small_2$Proc_7_CCS)
+```
+
+# Mapping Diagnosis_Code2 through Diagnosis_Code18 to CCS which has fewer levels  
+The Diagnosis codes from Diagnosis_Code2 up to Diagnosis_Code18 are all mixture of ICD9 diagnosis codes and ICD10 diagnosis codes. Another problem we need to fix is that the strings in Diagnosis_Code2 up to Diagnosis_Code17 all contain whitespaces which is really annoying. So we will use the lookup method after removing those whitespaces.
+```{r}
+lookup_ICD9ICD10Diag <- read.csv("ICD9+ICD10Diag-CCS.csv", header = TRUE)
+Data_small_2$Diagnosis_Code_2 <- gsub(" ","",Data_small_2$Diagnosis_Code_2)
+Data_small_2$Diagnosis_Code_3 <- gsub(" ","",Data_small_2$Diagnosis_Code_3)
+Data_small_2$Diagnosis_Code_4 <- gsub(" ","",Data_small_2$Diagnosis_Code_4)
+Data_small_2$Diagnosis_Code_5 <- gsub(" ","",Data_small_2$Diagnosis_Code_5)
+Data_small_2$Diagnosis_Code_6 <- gsub(" ","",Data_small_2$Diagnosis_Code_6)
+Data_small_2$Diagnosis_Code_7 <- gsub(" ","",Data_small_2$Diagnosis_Code_7)
+Data_small_2$Diagnosis_Code_8 <- gsub(" ","",Data_small_2$Diagnosis_Code_8)
+Data_small_2$Diagnosis_Code_9 <- gsub(" ","",Data_small_2$Diagnosis_Code_9)
+Data_small_2$Diagnosis_Code_10 <- gsub(" ","",Data_small_2$Diagnosis_Code_10)
+Data_small_2$Diagnosis_Code_11 <- gsub(" ","",Data_small_2$Diagnosis_Code_11)
+Data_small_2$Diagnosis_Code_12 <- gsub(" ","",Data_small_2$Diagnosis_Code_12)
+Data_small_2$Diagnosis_Code_13 <- gsub(" ","",Data_small_2$Diagnosis_Code_13)
+Data_small_2$Diagnosis_Code_14 <- gsub(" ","",Data_small_2$Diagnosis_Code_14)
+Data_small_2$Diagnosis_Code_15 <- gsub(" ","",Data_small_2$Diagnosis_Code_15)
+Data_small_2$Diagnosis_Code_16 <- gsub(" ","",Data_small_2$Diagnosis_Code_16)
+Data_small_2$Diagnosis_Code_17 <- gsub(" ","",Data_small_2$Diagnosis_Code_17)
+```
+
+```{r}
+Data_small_2$Diag_2_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_2,ICD9and10Diag)])
+unique(Data_small_2$Diag_2_CCS)
+Data_small_2$Diag_3_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_3,ICD9and10Diag)])
+unique(Data_small_2$Diag_3_CCS)
+Data_small_2$Diag_4_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_4,ICD9and10Diag)])
+unique(Data_small_2$Diag_4_CCS)
+Data_small_2$Diag_5_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_5,ICD9and10Diag)])
+unique(Data_small_2$Diag_5_CCS)
+Data_small_2$Diag_6_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_6,ICD9and10Diag)])
+unique(Data_small_2$Diag_6_CCS)
+Data_small_2$Diag_7_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_7,ICD9and10Diag)])
+unique(Data_small_2$Diag_7_CCS)
+Data_small_2$Diag_8_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_8,ICD9and10Diag)])
+unique(Data_small_2$Diag_8_CCS)
+Data_small_2$Diag_9_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_9,ICD9and10Diag)])
+unique(Data_small_2$Diag_9_CCS)
+Data_small_2$Diag_10_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_10,ICD9and10Diag)])
+unique(Data_small_2$Diag_10_CCS)
+Data_small_2$Diag_11_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_11,ICD9and10Diag)])
+unique(Data_small_2$Diag_11_CCS)
+Data_small_2$Diag_12_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_12,ICD9and10Diag)])
+unique(Data_small_2$Diag_12_CCS)
+Data_small_2$Diag_13_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_13,ICD9and10Diag)])
+unique(Data_small_2$Diag_13_CCS)
+Data_small_2$Diag_14_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_14,ICD9and10Diag)])
+unique(Data_small_2$Diag_14_CCS)
+Data_small_2$Diag_15_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_15,ICD9and10Diag)])
+unique(Data_small_2$Diag_15_CCS)
+Data_small_2$Diag_16_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_16,ICD9and10Diag)])
+unique(Data_small_2$Diag_16_CCS)
+Data_small_2$Diag_17_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_17,ICD9and10Diag)])
+unique(Data_small_2$Diag_17_CCS)
+Data_small_2$Diag_18_CCS <- with(lookup_ICD9ICD10Diag, CCS[match(Data_small_2$Diagnosis_Code_18,ICD9and10Diag)])
+unique(Data_small_2$Diag_18_CCS)
+```
+
+# Mapping HCPCS with CCS which has fewer levels
+```{r}
+lookup_HCPCS <- read.csv("HCPCS-CCS.csv", header = TRUE)
+Data_small_2$HCPCS_CCS <- with(lookup_HCPCS, HCPCS_CCS[match(Data_small_2$HCPCS,HCPCS)])
+unique(Data_small_2$HCPCS_CCS)
+```
+
+```{r}
+library(lubridate)
+
+age <- function(dob, age.day = today(), units = "years", floor = TRUE) {
+    calc.age = interval(dob, age.day) / duration(num = 1, units = units)
+    if (floor) return(as.integer(floor(calc.age)))
+    return(calc.age)
+}
+Data_small_2$Age <- age(as.Date(Data_small_2$Birth_Date))
+
+if (Data_small_2$Age < 18) {
+  Data_small_2$Age <- 1
+} else if ((Data_small_2$Age > 18) & (Data_small_2$Age <= 44)) {
+Data_small_2$Age <- 2
+} else if ((Data_small_2$Age > 44) & (Data_small_2$Age <= 64)) {
+Data_small_2$Age <- 3
+} else if ((Data_small_2$Age > 64) & (Data_small_2$Age <= 84)) {
+Data_small_2$Age <- 4
+} else if (Data_small_2$Age > 84 ) {
+Data_small_2$Age <- 5
+}
+```
+
+```{r}
+lookup_Zipcode <- read.csv("Zip_codes.csv", header = TRUE)
+Data_small_2$Zipcode <- with(lookup_Zipcode, County[match(Data_small_2$Zip_Code,Zip.Code)])
+colnames(lookup_Zipcode)
+
+
+install.packages("C50")
+```
+
+
+
+
+
